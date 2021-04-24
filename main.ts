@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.92.0/http/server.ts";
 import {
+  acceptable,
   acceptWebSocket,
   WebSocket,
 } from "https://deno.land/std@0.92.0/ws/mod.ts";
@@ -104,13 +105,17 @@ if (import.meta.main) {
   const portString = Deno.args?.[0] || Deno.env.get("FLAPPY_PORT") || "8003";
   const port = parseInt(portString) || 8003;
   console.log(`websocket server is running on :${port}`);
-  for await (const req of serve({port})) {
+  for await (const req of serve({ port })) {
     const { conn, r: bufReader, w: bufWriter, headers, url } = req;
-    acceptWebSocket({ conn, bufReader, bufWriter, headers })
-      .then(url.startsWith("/host") ? handleHost : handleClient)
-      .catch(async (err) => {
-        console.error(`failed to accept websocket: ${err}`);
-        await req.respond({ status: 400 });
-      });
+    if (acceptable(req)) {
+      acceptWebSocket({ conn, bufReader, bufWriter, headers })
+        .then(url.startsWith("/host") ? handleHost : handleClient)
+        .catch(async (err) => {
+          console.error(`failed to accept websocket: ${err}`);
+          await req.respond({ status: 400 });
+        });
+    } else {
+      req.respond({body: '<html><head><meta charset="utf-8"></head><body>👋</body></html>', });
+    }
   }
 }
