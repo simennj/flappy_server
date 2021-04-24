@@ -1,8 +1,6 @@
 import { serve } from "https://deno.land/std@0.92.0/http/server.ts";
 import {
   acceptWebSocket,
-  // isWebSocketCloseEvent,
-  // isWebSocketPingEvent,
   WebSocket,
 } from "https://deno.land/std@0.92.0/ws/mod.ts";
 
@@ -31,14 +29,6 @@ async function handleHost(sock: WebSocket) {
         if (data.remove) {
           room.clients.delete(data.remove);
         }
-        // } else if (ev instanceof Uint8Array) {
-        //   console.log("host:ws:Binary", ev);
-        // } else if (isWebSocketPingEvent(ev)) {
-        //   const [, body] = ev;
-        //   console.log("host:ws:Ping", body);
-        // } else if (isWebSocketCloseEvent(ev)) {
-        //   const { code, reason } = ev;
-        //   console.log("host:ws:Close", code, reason);
       }
     }
   } catch (err) {
@@ -58,7 +48,6 @@ async function handleClient(sock: WebSocket) {
   console.log("client connected!");
   try {
     const state = await getClientState(sock);
-    // sock.send(JSON.stringify({clientName: state.name}));
     for await (const ev of sock) {
       if (typeof ev === "string") {
         console.log("client:ws:Text", ev);
@@ -66,14 +55,6 @@ async function handleClient(sock: WebSocket) {
         await state.hostSock.send(
           JSON.stringify({ ...message, name: state.name }),
         );
-        // } else if (ev instanceof Uint8Array) {
-        //   console.log("client:ws:Binary", ev);
-        // } else if (isWebSocketPingEvent(ev)) {
-        //   const [, body] = ev;
-        //   console.log("client:ws:Ping", body);
-        // } else if (isWebSocketCloseEvent(ev)) {
-        //   const { code, reason } = ev;
-        //   console.log("client:ws:Close", code, reason);
       }
     }
   } catch (err) {
@@ -120,17 +101,11 @@ async function getClientState(sock: WebSocket): Promise<ClientState> {
 }
 
 if (import.meta.main) {
-  /** websocket echo server */
   const port = Deno.args[0] || "8003";
   console.log(`websocket server is running on :${port}`);
   for await (const req of serve(`:${port}`)) {
     const { conn, r: bufReader, w: bufWriter, headers, url } = req;
-    acceptWebSocket({
-      conn,
-      bufReader,
-      bufWriter,
-      headers,
-    })
+    acceptWebSocket({ conn, bufReader, bufWriter, headers })
       .then(url.startsWith("/host") ? handleHost : handleClient)
       .catch(async (err) => {
         console.error(`failed to accept websocket: ${err}`);
