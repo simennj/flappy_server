@@ -101,9 +101,10 @@ async function getClientState(sock: WebSocket): Promise<ClientState> {
 }
 
 if (import.meta.main) {
-  const port = Deno.args?.[0] || Deno.env.get("FLAPPY_PORT") || "8003";
+  const portString = Deno.args?.[0] || Deno.env.get("FLAPPY_PORT") || "8003";
+  const port = parseInt(portString) || 8003;
   console.log(`websocket server is running on :${port}`);
-  for await (const req of serve(`:${port}`)) {
+  for await (const req of serve({port})) {
     const { conn, r: bufReader, w: bufWriter, headers, url } = req;
     acceptWebSocket({ conn, bufReader, bufWriter, headers })
       .then(url.startsWith("/host") ? handleHost : handleClient)
