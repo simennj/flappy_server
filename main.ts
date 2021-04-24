@@ -1,6 +1,7 @@
 import {
   serve,
   ServerRequest,
+  Response,
 } from "https://deno.land/std@0.92.0/http/server.ts";
 import {
   acceptable,
@@ -105,34 +106,34 @@ async function getClientState(sock: WebSocket): Promise<ClientState> {
 }
 interface RequestEvent extends Event {
   request: ServerRequest;
+  respondWith: (response: Response | Promise<Response>) => void;
 }
 
 const handleRequest = (req: ServerRequest) => {
+  if (!acceptable(req)) return {
+      body: '<html><head><meta charset="utf-8"></head><body>👋</body></html>',
+    };
   const { conn, r: bufReader, w: bufWriter, headers, url } = req;
-  if (acceptable(req)) {
     acceptWebSocket({ conn, bufReader, bufWriter, headers })
       .then(url.startsWith("/host") ? handleHost : handleClient)
       .catch(async (err) => {
         console.error(`failed to accept websocket: ${err}`);
         await req.respond({ status: 400 });
       });
-  } else {
-    req.respond({
-      body: '<html><head><meta charset="utf-8"></head><body>👋</body></html>',
-    });
-  }
 };
 
 if (!Deno.listen) {
-  addEventListener("fetch", (event) => {
-    const req = (event as RequestEvent).request;
-    handleRequest(req);
+  addEventListener("fetch", (e) => {
+    const event = e as RequestEvent;
+    const response = handleRequest(event.request);
+    if (response) event.respondWith(response);
   });
 } else if (import.meta.main) {
   const portString = Deno.args?.[0] || Deno.env.get("FLAPPY_PORT") || "8003";
   const port = parseInt(portString) || 8003;
   console.log(`websocket server is running on :${port}`);
   for await (const req of serve({ port })) {
-    handleRequest(req);
+    const response = handleRequest(req);
+    if (response) req.respond(response);
   }
 }
