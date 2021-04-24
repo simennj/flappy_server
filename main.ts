@@ -1,7 +1,6 @@
 import {
   serve,
   ServerRequest,
-  Response,
 } from "https://deno.land/std@0.92.0/http/server.ts";
 import {
   acceptable,
@@ -125,8 +124,13 @@ const handleRequest = (req: ServerRequest) => {
 if (!Deno.listen) {
   addEventListener("fetch", (e) => {
     const event = e as RequestEvent;
-    const response = handleRequest(event.request);
-    if (response) event.respondWith(response);
+    const actualResponse = handleRequest(event.request);
+    if (actualResponse) {
+      const response = new Response(actualResponse.body, {
+        headers: {"content-type": "text/html; charset=utf-8"}
+      });
+      event.respondWith(response);
+    }
   });
 } else if (import.meta.main) {
   const portString = Deno.args?.[0] || Deno.env.get("FLAPPY_PORT") || "8003";
